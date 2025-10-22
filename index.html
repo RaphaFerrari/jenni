@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Controle de Projetos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .tab-button.active {
+            border-bottom-color: #3b82f6;
+            color: #3b82f6;
+        }
+        .modal-bg {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Tela de Login -->
+    <div id="login-container" class="flex items-center justify-center min-h-screen">
+        <div class="w-full max-w-md bg-white p-8 rounded-lg shadow-md">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Acessar Sistema</h2>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="email" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
+                    <input type="password" id="password" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                <div id="auth-error" class="hidden text-red-500 text-sm mb-4 text-center"></div>
+                <div class="flex items-center justify-between gap-4">
+                    <button type="submit" id="login-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300">Entrar</button>
+                    <button type="button" id="signup-btn" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300">Criar Conta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal do App (inicialmente oculto) -->
+    <div id="app-container" class="hidden container mx-auto p-4 md:p-8">
+        <header class="mb-8 flex justify-between items-start">
+            <div class="text-center flex-grow">
+                 <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Sistema de Registros de Projetos</h1>
+                 <p class="text-gray-500 mt-2">Vinni & Jenni</p>
+            </div>
+            <div class="text-right">
+                <span id="user-email" class="text-sm text-gray-600 block mb-2"></span>
+                <button id="logout-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Sair
+                </button>
+            </div>
+        </header>
+
+        <!-- Navegação por Abas -->
+        <div class="mb-6 border-b border-gray-200">
+            <nav class="flex -mb-px space-x-6" aria-label="Tabs">
+                <button onclick="showTab('projetos')" id="tab-btn-projetos" class="tab-button active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    <i class="fas fa-drafting-compass mr-2"></i> Projetos
+                </button>
+                <button onclick="showTab('gastos')" id="tab-btn-gastos" class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                    <i class="fas fa-file-invoice-dollar mr-2"></i> Previsão de Gastos
+                </button>
+                <button onclick="showTab('caixa')" id="tab-btn-caixa" class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                    <i class="fas fa-cash-register mr-2"></i> Fluxo de Caixa
+                </button>
+            </nav>
+        </div>
+
+        <!-- Conteúdo das Abas -->
+        <main>
+            <!-- Aba de Projetos -->
+            <div id="tab-projetos">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">Lista de Projetos</h2>
+                        <button onclick="openModal('project-modal')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-300">
+                            <i class="fas fa-plus mr-2"></i> Adicionar Projeto
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Status</th>
+                                    <th scope="col" class="px-6 py-3">Projeto</th>
+                                    <th scope="col" class="px-6 py-3">Cliente</th>
+                                    <th scope="col" class="px-6 py-3">Contrato</th>
+                                    <th scope="col" class="px-6 py-3">Valor Total</th>
+                                    <th scope="col" class="px-6 py-3">Valor Pago</th>
+                                    <th scope="col" class="px-6 py-3">Restante</th>
+                                    <th scope="col" class="px-6 py-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="project-list">
+                                <!-- Linhas de projetos serão inseridas aqui via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aba de Previsão de Gastos -->
+            <div id="tab-gastos" class="hidden">
+                 <div id="forecast-card" class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">Previsão de Gastos por Projeto</h2>
+                        <div class="no-export space-x-2">
+                             <button onclick="openExpenseTypeModal('add')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-300">
+                                <i class="fas fa-plus mr-2"></i> Adicionar Variável
+                            </button>
+                             <button id="clear-all-expenses-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-300">
+                                <i class="fas fa-trash mr-2"></i> Limpar Tudo
+                            </button>
+                             <button id="export-pdf-btn" onclick="exportForecastAsPDF()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-300">
+                                <i class="fas fa-file-pdf mr-2"></i> Exportar PDF
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 mb-4">Cadastre os custos padrão para a entrega de um projeto.</p>
+                    <div class="mb-4 no-export">
+                        <label for="client-name-forecast" class="block text-sm font-medium text-gray-700">Nome do Cliente (para o PDF)</label>
+                        <input type="text" id="client-name-forecast" class="mt-1 block w-full md:w-1/2 rounded-md border-gray-300 shadow-sm p-2 border" placeholder="Insira o nome do cliente">
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Descrição da Variável</th>
+                                    <th scope="col" class="px-6 py-3">Valor Previsto</th>
+                                    <th scope="col" class="px-6 py-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expense-type-list">
+                                <!-- Itens de gastos serão inseridos aqui -->
+                            </tbody>
+                            <tfoot class="bg-gray-50 font-semibold">
+                                <tr>
+                                    <th scope="row" class="px-6 py-3 text-base text-gray-900">Total Previsto</th>
+                                    <td id="total-expense-forecast" class="px-6 py-3 text-lg text-blue-600">R$ 0,00</td>
+                                    <td></td>
+                                </tr>
+                                <tr class="bg-white border-b">
+                                    <th scope="row" class="px-6 py-3 text-base text-right font-medium text-gray-700">Desconto (R$)</th>
+                                    <td class="px-6 py-3">
+                                        <input type="number" id="discount-forecast" class="w-full p-1 border border-gray-300 rounded-md" placeholder="0.00" step="0.01">
+                                    </td>
+                                    <td></td>
+                                </tr>
+                                <tr class="bg-gray-50 font-semibold">
+                                    <th scope="row" class="px-6 py-3 text-base text-gray-900">Valor Final</th>
+                                    <td id="final-total-forecast" class="px-6 py-3 text-lg text-green-600 font-bold">R$ 0,00</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aba de Fluxo de Caixa -->
+            <div id="tab-caixa" class="hidden">
+                <!-- Cards de Resumo -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-green-100 p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold text-green-800">Total de Entradas</h3>
+                        <p id="total-income" class="text-2xl font-bold text-green-600 mt-2">R$ 0,00</p>
+                    </div>
+                    <div class="bg-red-100 p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold text-red-800">Total de Saídas</h3>
+                        <p id="total-outcome" class="text-2xl font-bold text-red-600 mt-2">R$ 0,00</p>
+                    </div>
+                    <div class="bg-blue-100 p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold text-blue-800">Saldo Atual</h3>
+                        <p id="current-balance" class="text-2xl font-bold text-blue-600 mt-2">R$ 0,00</p>
+                    </div>
+                </div>
+
+                <!-- Lista de Transações -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">Lançamentos</h2>
+                        <div class="space-x-2">
+                            <button onclick="openTransactionModal('income')" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-300">
+                                <i class="fas fa-plus mr-2"></i> Nova Entrada
+                            </button>
+                             <button onclick="openTransactionModal('outcome')" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-300">
+                                <i class="fas fa-minus mr-2"></i> Nova Saída
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                         <table class="w-full text-sm text-left text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Data</th>
+                                    <th scope="col" class="px-6 py-3">Descrição</th>
+                                    <th scope="col" class="px-6 py-3">Tipo</th>
+                                    <th scope="col" class="px-6 py-3">Valor</th>
+                                    <th scope="col" class="px-6 py-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transaction-list">
+                                <!-- Transações aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Adicionar/Editar Projeto -->
+    <div id="project-modal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full max-h-[95vh] overflow-y-auto">
+            <h3 id="project-modal-title" class="text-2xl font-bold mb-6 text-gray-800">Adicionar Novo Projeto</h3>
+            <form id="project-form">
+                <input type="hidden" id="projectId">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Coluna 1 -->
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                        <div class="flex items-center space-x-2 mt-1">
+                            <select id="status" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                                <!-- Status options here -->
+                            </select>
+                            <button type="button" onclick="openModal('status-modal')" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-md"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="projectName" class="block text-sm font-medium text-gray-700">Nome do Projeto</label>
+                        <input type="text" id="projectName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border" required>
+                    </div>
+                     <div class="md:col-span-2">
+                        <label for="client" class="block text-sm font-medium text-gray-700">Cliente</label>
+                        <input type="text" id="client" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="location" class="block text-sm font-medium text-gray-700">Local</label>
+                        <input type="text" id="location" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    </div>
+                     <div>
+                        <label for="coordinates" class="block text-sm font-medium text-gray-700">Coordenadas</label>
+                        <input type="text" id="coordinates" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="contractNumber" class="block text-sm font-medium text-gray-700">N° Contrato</label>
+                        <input type="text" id="contractNumber" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    </div>
+                     <div>
+                        <label for="rrtJ" class="block text-sm font-medium text-gray-700">N° RRT (J)</label>
+                        <input type="text" id="rrtJ" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    </div>
+                     <div>
+                        <label for="rrtV" class="block text-sm font-medium text-gray-700">N° RRT (V)</label>
+                        <input type="text" id="rrtV" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="startDate" class="block text-sm font-medium text-gray-700">Data de Início</label>
+                        <input type="date" id="startDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="endDate" class="block text-sm font-medium text-gray-700">Data de Término</label>
+                        <input type="date" id="endDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="link" class="block text-sm font-medium text-gray-700">Link (Drive, Portfólio, etc)</label>
+                        <input type="url" id="link" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="notes" class="block text-sm font-medium text-gray-700">Observações</label>
+                        <textarea id="notes" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"></textarea>
+                    </div>
+                    <div>
+                        <label for="contractValue" class="block text-sm font-medium text-gray-700">Valor do Contrato</label>
+                        <input type="number" id="contractValue" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border" required>
+                    </div>
+                    <div>
+                        <label for="paidValue" class="block text-sm font-medium text-gray-700">Valor Pago</label>
+                        <input type="number" id="paidValue" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border" required>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('project-modal')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Salvar Projeto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Adicionar Status -->
+    <div id="status-modal" class="hidden fixed inset-0 z-50 overflow-y-auto modal-bg flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl p-8 m-4 max-w-sm w-full">
+             <h3 class="text-2xl font-bold mb-6 text-gray-800">Adicionar Status</h3>
+             <form id="status-form">
+                 <label for="newStatus" class="block text-sm font-medium text-gray-700">Nome do Novo Status</label>
+                 <input type="text" id="newStatus" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                 <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('status-modal')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
+                 </div>
+             </form>
+             <hr class="my-4">
+             <h4 class="text-lg font-semibold mb-2">Status existentes</h4>
+             <div id="status-list" class="space-y-2"></div>
+        </div>
+    </div>
+    
+    <!-- Modal: Adicionar/Editar Variável de Gasto -->
+    <div id="expense-type-modal" class="hidden fixed inset-0 z-50 overflow-y-auto modal-bg flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl p-8 m-4 max-w-sm w-full">
+             <h3 id="expense-type-modal-title" class="text-2xl font-bold mb-6 text-gray-800">Adicionar Variável</h3>
+             <form id="expense-type-form">
+                 <input type="hidden" id="expenseTypeId">
+                 <div class="space-y-4">
+                     <div>
+                        <label for="expenseTypeName" class="block text-sm font-medium text-gray-700">Nome da Variável</label>
+                        <input type="text" id="expenseTypeName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                     </div>
+                     <div>
+                        <label for="expenseTypeValue" class="block text-sm font-medium text-gray-700">Valor (R$)</label>
+                        <input type="number" id="expenseTypeValue" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                     </div>
+                 </div>
+                 <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('expense-type-modal')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
+                 </div>
+             </form>
+        </div>
+    </div>
+    
+    <!-- Modal: Adicionar Transação (Entrada/Saída) -->
+    <div id="transaction-modal" class="hidden fixed inset-0 z-50 overflow-y-auto modal-bg flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl p-8 m-4 max-w-sm w-full">
+             <h3 id="transaction-modal-title" class="text-2xl font-bold mb-6 text-gray-800">Nova Transação</h3>
+             <form id="transaction-form">
+                 <input type="hidden" id="transactionType">
+                 <input type="hidden" id="transactionId">
+                 <div class="space-y-4">
+                     <div>
+                         <label for="transactionDescription" class="block text-sm font-medium text-gray-700">Descrição</label>
+                         <input type="text" id="transactionDescription" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                     </div>
+                     <div>
+                         <label for="transactionAmount" class="block text-sm font-medium text-gray-700">Valor</label>
+                         <input type="number" id="transactionAmount" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                     </div>
+                     <div>
+                        <label for="transactionDate" class="block text-sm font-medium text-gray-700">Data</label>
+                        <input type="date" id="transactionDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                    </div>
+                 </div>
+                 <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('transaction-modal')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
+                 </div>
+             </form>
+        </div>
+    </div>
+    
+    <!-- Modal: Confirmação de Exclusão -->
+    <div id="confirm-modal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl p-8 m-4 max-w-sm w-full">
+             <h3 id="confirm-modal-title" class="text-xl font-bold mb-4 text-gray-800">Confirmar Ação</h3>
+             <p id="confirm-modal-text" class="text-gray-600 mb-6">Você tem certeza?</p>
+             <div class="mt-6 flex justify-end space-x-3">
+                <button id="confirm-modal-cancel" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                <button id="confirm-modal-confirm" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">Confirmar</button>
+             </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // Importações do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            signOut 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, collection, onSnapshot, addDoc, doc, setDoc, deleteDoc, serverTimestamp, getDocs 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+
+        // Configuração do Firebase (usando variáveis globais injetadas)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = {
+            apiKey: "AIzaSyBjGz0pgJB8Y4EHZtLqQzSfQnD2VTS99B4",
+            authDomain: "jenni-arquit.firebaseapp.com",
+            projectId: "jenni-arquit",
+            storageBucket: "jenni-arquit.appspot.com",
+            messagingSenderId: "180282885343",
+            appId: "1:180282885343:web:7ebcd947a7279d92c8d56a",
+            measurementId: "G-HK3DL2TGR9"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let userId = null;
+        let projectsCol, statusesCol, expenseTypesCol, transactionsCol;
+        
+        // --- CONTROLE DE AUTENTICAÇÃO E UI ---
+        const loginContainer = document.getElementById('login-container');
+        const appContainer = document.getElementById('app-container');
+        const authErrorDiv = document.getElementById('auth-error');
+        const userEmailSpan = document.getElementById('user-email');
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // Usuário está logado
+                userId = user.uid;
+                userEmailSpan.textContent = user.email;
+                loginContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                initializeCollections();
+                setupListeners();
+            } else {
+                // Usuário não está logado
+                userId = null;
+                userEmailSpan.textContent = '';
+                loginContainer.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+            }
+        });
+
+        function initializeCollections() {
+             const basePath = `artifacts/${appId}/public/data`;
+             projectsCol = collection(db, `${basePath}/projects`);
+             statusesCol = collection(db, `${basePath}/statuses`);
+             expenseTypesCol = collection(db, `${basePath}/expenseTypes`);
+             transactionsCol = collection(db, `${basePath}/transactions`);
+        }
+
+        const showAuthError = (message) => {
+            authErrorDiv.textContent = message;
+            authErrorDiv.classList.remove('hidden');
+        }
+
+        // Login
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const loginBtn = document.getElementById('login-btn');
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Entrando...`;
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            signInWithEmailAndPassword(auth, email, password)
+                .catch(error => showAuthError("Email ou senha inválidos."))
+                .finally(() => {
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = 'Entrar';
+                });
+        });
+
+        // Criar Conta
+         document.getElementById('signup-btn').addEventListener('click', () => {
+            const signupBtn = document.getElementById('signup-btn');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+             if (!email || !password) {
+                 showAuthError("Por favor, preencha email e senha para criar uma conta.");
+                 return;
+             }
+            
+            signupBtn.disabled = true;
+            signupBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Criando...`;
+
+            createUserWithEmailAndPassword(auth, email, password)
+                .catch(error => {
+                    if (error.code === 'auth/email-already-in-use') {
+                        showAuthError('Este email já está em uso.');
+                    } else if (error.code === 'auth/weak-password') {
+                        showAuthError('A senha deve ter pelo menos 6 caracteres.');
+                    } else {
+                        showAuthError('Erro ao criar conta.');
+                    }
+                })
+                .finally(() => {
+                    signupBtn.disabled = false;
+                    signupBtn.innerHTML = 'Criar Conta';
+                });
+        });
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            signOut(auth);
+        });
+        
+        // --- LÓGICA DE UI (ABAS E MODAIS) ---
+
+        window.showTab = (tabId) => {
+            const tabs = ['projetos', 'gastos', 'caixa'];
+            tabs.forEach(id => {
+                document.getElementById(`tab-${id}`).classList.add('hidden');
+                document.getElementById(`tab-btn-${id}`).classList.remove('active');
+                document.getElementById(`tab-btn-${id}`).classList.add('text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+
+            });
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const activeButton = document.getElementById(`tab-btn-${tabId}`);
+            activeButton.classList.add('active');
+            activeButton.classList.remove('text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+        };
+
+        window.openModal = (modalId) => document.getElementById(modalId).classList.remove('hidden');
+        window.closeModal = (modalId) => {
+            document.getElementById(modalId).classList.add('hidden');
+            // Limpa formulários ao fechar
+            const form = document.getElementById(modalId).querySelector('form');
+            if(form) form.reset();
+            if(modalId === 'project-modal') {
+                document.getElementById('projectId').value = '';
+                document.getElementById('project-modal-title').innerText = 'Adicionar Novo Projeto';
+            }
+        };
+        
+        // Fechar modal clicando no fundo
+        ['project-modal', 'status-modal', 'expense-type-modal', 'transaction-modal', 'confirm-modal'].forEach(id => {
+            document.getElementById(id).addEventListener('click', (e) => {
+                if (e.target.id === id) closeModal(id);
+            });
+        });
+
+        // --- RENDERIZAÇÃO E CÁLCULOS ---
+        
+        let currentTotalForecast = 0;
+
+        const formatCurrency = (value) => {
+            return parseFloat(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        };
+        
+        const formatDate = (timestamp) => {
+             if (!timestamp) return 'N/A';
+             const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
+             return date.toLocaleDateString('pt-BR');
+        }
+
+        const updateFinalTotal = () => {
+            const discountInput = document.getElementById('discount-forecast');
+            const discount = parseFloat(discountInput.value) || 0;
+            const finalTotal = currentTotalForecast - discount;
+            document.getElementById('final-total-forecast').textContent = formatCurrency(finalTotal);
+        }
+        document.getElementById('discount-forecast').addEventListener('input', updateFinalTotal);
+
+
+        // Renderiza Status
+        const renderStatuses = (statuses) => {
+            const statusSelect = document.getElementById('status');
+            const statusListDiv = document.getElementById('status-list');
+            statusSelect.innerHTML = '<option value="">Selecione...</option>';
+            statusListDiv.innerHTML = '';
+            statuses.sort((a, b) => a.name.localeCompare(b.name)).forEach(status => {
+                const option = document.createElement('option');
+                option.value = status.name;
+                option.textContent = status.name;
+                statusSelect.appendChild(option);
+
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center bg-gray-100 p-2 rounded';
+                div.innerHTML = `
+                    <span>${status.name}</span>
+                    <button class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                `;
+                div.querySelector('button').onclick = () => deleteStatus(status.id);
+                statusListDiv.appendChild(div);
+            });
+        };
+        
+        // Renderiza Projetos
+        const renderProjects = (projects) => {
+            const projectList = document.getElementById('project-list');
+            projectList.innerHTML = '';
+            projects.sort((a,b) => a.projectName.localeCompare(b.projectName)).forEach(project => {
+                const remaining = (project.contractValue || 0) - (project.paidValue || 0);
+                const row = document.createElement('tr');
+                row.className = 'bg-white border-b hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-6 py-4"><span class="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">${project.status || '-'}</span></td>
+                    <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${project.projectName}</th>
+                    <td class="px-6 py-4">${project.client || '-'}</td>
+                    <td class="px-6 py-4">${project.contractNumber || '-'}</td>
+                    <td class="px-6 py-4">${formatCurrency(project.contractValue)}</td>
+                    <td class="px-6 py-4 text-green-600">${formatCurrency(project.paidValue)}</td>
+                    <td class="px-6 py-4 font-bold ${remaining > 0 ? 'text-red-600' : 'text-gray-600'}">${formatCurrency(remaining)}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button class="edit-btn text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="delete-btn text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                row.querySelector('.edit-btn').onclick = () => editProject(project);
+                row.querySelector('.delete-btn').onclick = () => deleteProject(project.id);
+                projectList.appendChild(row);
+            });
+        };
+        
+        // Renderiza Tipos de Gastos
+        const renderExpenseTypes = (types) => {
+            const listBody = document.getElementById('expense-type-list');
+            const totalForecastEl = document.getElementById('total-expense-forecast');
+            listBody.innerHTML = '';
+            let totalForecast = 0;
+
+            types.sort((a,b) => a.name.localeCompare(b.name)).forEach(type => {
+                totalForecast += type.value || 0;
+                const row = document.createElement('tr');
+                row.className = 'bg-white border-b hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${type.name}</td>
+                    <td class="px-6 py-4">${formatCurrency(type.value)}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button class="edit-btn text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="delete-btn text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                row.querySelector('.edit-btn').onclick = () => openExpenseTypeModal('edit', type);
+                row.querySelector('.delete-btn').onclick = () => deleteExpenseType(type.id);
+                listBody.appendChild(row);
+            });
+
+            totalForecastEl.textContent = formatCurrency(totalForecast);
+            currentTotalForecast = totalForecast;
+            updateFinalTotal();
+        };
+
+        // Renderiza Transações e Resumo do Caixa
+        const renderCashFlow = (transactions) => {
+            const transactionList = document.getElementById('transaction-list');
+            transactionList.innerHTML = '';
+            let totalIncome = 0;
+            let totalOutcome = 0;
+
+            const sortedTransactions = transactions.sort((a, b) => {
+                const dateA = a.date.seconds || 0;
+                const dateB = b.date.seconds || 0;
+                return dateB - dateA;
+            });
+
+            sortedTransactions.forEach(t => {
+                const isIncome = t.type === 'income';
+                if(isIncome) totalIncome += t.amount;
+                else totalOutcome += t.amount;
+
+                const row = document.createElement('tr');
+                row.className = 'bg-white border-b hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-6 py-4">${formatDate(t.date)}</td>
+                    <td class="px-6 py-4 font-medium text-gray-900">${t.description}</td>
+                    <td class="px-6 py-4">
+                        <span class="${isIncome ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} text-xs font-medium px-2.5 py-0.5 rounded">
+                            ${isIncome ? 'Entrada' : 'Saída'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 font-bold ${isIncome ? 'text-green-600' : 'text-red-600'}">${formatCurrency(t.amount)}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button class="delete-btn text-red-600 hover:red-800"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                row.querySelector('.delete-btn').onclick = () => deleteTransaction(t.id);
+                transactionList.appendChild(row);
+            });
+
+            document.getElementById('total-income').textContent = formatCurrency(totalIncome);
+            document.getElementById('total-outcome').textContent = formatCurrency(totalOutcome);
+            document.getElementById('current-balance').textContent = formatCurrency(totalIncome - totalOutcome);
+        };
+        
+        window.exportForecastAsPDF = () => {
+            const exportButton = document.getElementById('export-pdf-btn');
+            exportButton.disabled = true;
+            exportButton.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Exportando...`;
+
+            const elementToExport = document.getElementById('forecast-card');
+            const { jsPDF } = window.jspdf;
+
+            html2canvas(elementToExport, {
+                scale: 2,
+                useCORS: true,
+                onclone: (document) => {
+                    // Esconde elementos não desejados no clone
+                    const clonedButtons = document.querySelector('.no-export');
+                    if (clonedButtons) clonedButtons.style.display = 'none';
+
+                    // Pega o nome do cliente do documento original e insere no clone
+                    const clientNameInput = window.document.getElementById('client-name-forecast');
+                    const clientName = clientNameInput.value.trim();
+                    if (clientName) {
+                        const card = document.getElementById('forecast-card');
+                        const title = card.querySelector('h2');
+                        const clientNameEl = document.createElement('h3');
+                        clientNameEl.className = 'text-lg font-semibold text-gray-700 mb-2';
+                        clientNameEl.textContent = `Cliente: ${clientName}`;
+                        title.parentNode.insertBefore(clientNameEl, title.nextSibling);
+                    }
+                }
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+                const ratio = canvasWidth / canvasHeight;
+
+                let imgWidth = pdfWidth - 20;
+                let imgHeight = imgWidth / ratio;
+
+                if (imgHeight > pdfHeight - 20) {
+                    imgHeight = pdfHeight - 20;
+                    imgWidth = imgHeight * ratio;
+                }
+
+                const x = (pdfWidth - imgWidth) / 2;
+                const y = 10;
+
+                pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+                pdf.save('previsao-de-gastos.pdf');
+
+            }).catch(err => {
+                console.error("Erro ao exportar PDF:", err);
+            }).finally(() => {
+                exportButton.disabled = false;
+                exportButton.innerHTML = `<i class="fas fa-file-pdf mr-2"></i> Exportar PDF`;
+            });
+        };
+
+        // --- LÓGICA DE CONFIRMAÇÃO ---
+        let onConfirmAction = null;
+
+        window.openConfirmModal = (title, text, onConfirm) => {
+            document.getElementById('confirm-modal-title').textContent = title;
+            document.getElementById('confirm-modal-text').textContent = text;
+            onConfirmAction = onConfirm;
+            openModal('confirm-modal');
+        }
+
+        document.getElementById('confirm-modal-cancel').addEventListener('click', () => {
+            onConfirmAction = null;
+            closeModal('confirm-modal');
+        });
+
+        document.getElementById('confirm-modal-confirm').addEventListener('click', () => {
+            if (onConfirmAction) {
+                onConfirmAction();
+            }
+            onConfirmAction = null;
+            closeModal('confirm-modal');
+        });
+
+        // --- LISTENERS DO FIREBASE ---
+        
+        let unsubProjects, unsubStatuses, unsubExpenseTypes, unsubTransactions;
+
+        function setupListeners() {
+            if (!userId) return;
+
+            // Cancela listeners anteriores para evitar duplicação
+            if (unsubProjects) unsubProjects();
+            if (unsubStatuses) unsubStatuses();
+            if (unsubExpenseTypes) unsubExpenseTypes();
+            if (unsubTransactions) unsubTransactions();
+
+            unsubProjects = onSnapshot(projectsCol, snapshot => {
+                const projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderProjects(projects);
+            });
+            unsubStatuses = onSnapshot(statusesCol, snapshot => {
+                const statuses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderStatuses(statuses);
+            });
+            unsubExpenseTypes = onSnapshot(expenseTypesCol, snapshot => {
+                const types = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderExpenseTypes(types);
+            });
+            unsubTransactions = onSnapshot(transactionsCol, snapshot => {
+                const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderCashFlow(transactions);
+            });
+        }
+        
+        // --- LÓGICA DE DADOS (CRUD) ---
+
+        // Status
+        document.getElementById('status-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newStatus = document.getElementById('newStatus').value;
+            if (newStatus) {
+                await addDoc(statusesCol, { name: newStatus });
+                document.getElementById('status-form').reset();
+            }
+        });
+
+        const deleteStatus = (id) => {
+            openConfirmModal(
+                'Apagar Status',
+                'Tem certeza que deseja apagar este status?',
+                async () => await deleteDoc(doc(db, statusesCol.path, id))
+            );
+        };
+
+        window.openExpenseTypeModal = (mode, data = {}) => {
+            const form = document.getElementById('expense-type-form');
+            form.reset();
+            const modalTitle = document.getElementById('expense-type-modal-title');
+            const idInput = document.getElementById('expenseTypeId');
+            const nameInput = document.getElementById('expenseTypeName');
+            const valueInput = document.getElementById('expenseTypeValue');
+            
+            if (mode === 'edit') {
+                modalTitle.textContent = 'Editar Variável';
+                idInput.value = data.id;
+                nameInput.value = data.name;
+                valueInput.value = data.value;
+            } else {
+                modalTitle.textContent = 'Adicionar Variável';
+                idInput.value = '';
+            }
+            openModal('expense-type-modal');
+        }
+
+        // Tipos de Gastos
+        document.getElementById('expense-type-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('expenseTypeId').value;
+            const expenseData = {
+                name: document.getElementById('expenseTypeName').value,
+                value: parseFloat(document.getElementById('expenseTypeValue').value)
+            };
+
+            if (id) { // Editando
+                await setDoc(doc(db, expenseTypesCol.path, id), expenseData, { merge: true });
+            } else { // Criando
+                if (expenseData.name && !isNaN(expenseData.value)) {
+                    await addDoc(expenseTypesCol, expenseData);
+                }
+            }
+            closeModal('expense-type-modal');
+        });
+
+        document.getElementById('clear-all-expenses-btn').addEventListener('click', () => {
+            openConfirmModal(
+                'Limpar Todas as Variáveis',
+                'Tem certeza que deseja apagar TODAS as variáveis de gastos? Esta ação não pode ser desfeita.',
+                async () => {
+                    try {
+                        const querySnapshot = await getDocs(expenseTypesCol);
+                        for (const docSnapshot of querySnapshot.docs) {
+                            await deleteDoc(doc(db, expenseTypesCol.path, docSnapshot.id));
+                        }
+                    } catch (error) {
+                        console.error("Erro ao limpar as variáveis de gastos:", error);
+                    }
+                }
+            );
+        });
+
+        const deleteExpenseType = (id) => {
+            openConfirmModal(
+                'Apagar Variável',
+                'Tem certeza que deseja apagar esta variável?',
+                async () => await deleteDoc(doc(db, expenseTypesCol.path, id))
+            );
+        };
+
+        // Projetos
+        document.getElementById('project-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('projectId').value;
+            const projectData = {
+                status: document.getElementById('status').value,
+                projectName: document.getElementById('projectName').value,
+                location: document.getElementById('location').value,
+                coordinates: document.getElementById('coordinates').value,
+                client: document.getElementById('client').value,
+                contractNumber: document.getElementById('contractNumber').value,
+                rrtJ: document.getElementById('rrtJ').value,
+                rrtV: document.getElementById('rrtV').value,
+                startDate: document.getElementById('startDate').value,
+                endDate: document.getElementById('endDate').value,
+                link: document.getElementById('link').value,
+                notes: document.getElementById('notes').value,
+                contractValue: parseFloat(document.getElementById('contractValue').value) || 0,
+                paidValue: parseFloat(document.getElementById('paidValue').value) || 0,
+            };
+
+            if (id) { // Editando
+                await setDoc(doc(db, projectsCol.path, id), projectData, { merge: true });
+            } else { // Criando
+                await addDoc(projectsCol, projectData);
+            }
+            closeModal('project-modal');
+        });
+        
+        const editProject = (project) => {
+            document.getElementById('projectId').value = project.id;
+            document.getElementById('project-modal-title').innerText = 'Editar Projeto';
+
+            document.getElementById('status').value = project.status;
+            document.getElementById('projectName').value = project.projectName;
+            document.getElementById('location').value = project.location;
+            document.getElementById('coordinates').value = project.coordinates;
+            document.getElementById('client').value = project.client;
+            document.getElementById('contractNumber').value = project.contractNumber;
+            document.getElementById('rrtJ').value = project.rrtJ;
+            document.getElementById('rrtV').value = project.rrtV;
+            document.getElementById('startDate').value = project.startDate;
+            document.getElementById('endDate').value = project.endDate;
+            document.getElementById('link').value = project.link;
+            document.getElementById('notes').value = project.notes;
+            document.getElementById('contractValue').value = project.contractValue;
+            document.getElementById('paidValue').value = project.paidValue;
+
+            openModal('project-modal');
+        };
+
+        const deleteProject = (id) => {
+            openConfirmModal(
+                'Apagar Projeto',
+                'Tem certeza que deseja apagar este projeto?',
+                async () => await deleteDoc(doc(db, projectsCol.path, id))
+            );
+        };
+        
+        // Transações
+        window.openTransactionModal = (type) => {
+            document.getElementById('transaction-form').reset();
+            document.getElementById('transactionId').value = '';
+            document.getElementById('transactionType').value = type;
+            const title = document.getElementById('transaction-modal-title');
+            title.textContent = type === 'income' ? 'Nova Entrada' : 'Nova Saída';
+            title.className = `text-2xl font-bold mb-6 ${type === 'income' ? 'text-green-700' : 'text-red-700'}`;
+            document.getElementById('transactionDate').valueAsDate = new Date();
+            openModal('transaction-modal');
+        };
+        
+        document.getElementById('transaction-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const transactionData = {
+                type: document.getElementById('transactionType').value,
+                description: document.getElementById('transactionDescription').value,
+                amount: parseFloat(document.getElementById('transactionAmount').value),
+                date: new Date(document.getElementById('transactionDate').value)
+            };
+            if(transactionData.description && !isNaN(transactionData.amount)){
+                 await addDoc(transactionsCol, transactionData);
+            }
+            closeModal('transaction-modal');
+        });
+
+        const deleteTransaction = (id) => {
+            openConfirmModal(
+                'Apagar Transação',
+                'Tem certeza que deseja apagar esta transação?',
+                async () => await deleteDoc(doc(db, transactionsCol.path, id))
+            );
+        }
+
+    </script>
+</body>
+</html>
+
